@@ -233,9 +233,10 @@ class DataBank:
         word_list = [int(w) & 0xffff for w in word_list]
         # keep trace of any changes
         changes_list = []
+        num_addresses = len(word_list)
         # ensure atomic update of internal data
         with self._h_regs_lock:
-            if (address >= 0) and (address + len(word_list) <= len(self._h_regs)):
+            if (address >= 0) and (address + num_addresses <= len(self._h_regs)):
                 for offset, c_value in enumerate(word_list):
                     c_address = address + offset
                     if self._h_regs[c_address] != c_value:
@@ -246,6 +247,12 @@ class DataBank:
         # on server update
         if srv_info:
             # notify changes with on change method (after atomic update)
+            self.on_multiple_holding_registers_change(
+                address=address,
+                num_addresses=num_addresses,
+                from_values=self._h_regs[address : (address + num_addresses)],
+                to_values=word_list,
+                srv_info=srv_info)
             for address, from_value, to_value in changes_list:
                 self.on_holding_registers_change(address, from_value, to_value, srv_info=srv_info)
         return True
@@ -319,6 +326,24 @@ class DataBank:
         :param from_value: register original value
         :type from_value: int
         :param to_value: register next value
+        :type to_value: int
+        :param srv_info: some server info
+        :type srv_info: ModbusServerInfo
+        """
+        pass
+    
+    def on_multiple_holding_registers_change(self, address, num_addresses, from_values, to_values, srv_info):
+        """Called by server during a multi-address write, containing all changed values
+
+        This method is provided to be overridden with user code to catch all changes
+
+        :param address: address of first register
+        :type address: int
+        :param num_addresses: number of addresses
+        :type num_addresses: int
+        :param from_value: register original value
+        :type from_value: int
+        :param to_value: register next valueX
         :type to_value: int
         :param srv_info: some server info
         :type srv_info: ModbusServerInfo
